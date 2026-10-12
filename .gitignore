@@ -1,0 +1,12 @@
+.streamlit/secrets.toml
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Large trained models
+models/*.joblib
+!models/smaller_random_forest.joblib
+
+# Local backup
+app_backup.py
