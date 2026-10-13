@@ -28,27 +28,39 @@ st.set_page_config(
 
 
 # 3. Load data and model
+# 3. Load data and model
+
 @st.cache_data
 def load_data():
-    connection = mysql.connector.connect(
-        host="127.0.0.1",
-        port=3306,
-        user="root",
-        password=st.secrets["mysql"]["password"],
-        database="retail_forecasting"
-    )
+# Use MySQL locally when credentials are configured.
+# Otherwise, load the dataset from the project folder.
+ if "mysql" in st.secrets:
+  connection = mysql.connector.connect(
+host="127.0.0.1",
+port=3306,
+user="root",
+password=st.secrets["mysql"]["password"],
+database="retail_forecasting",
+connection_timeout=3,
+)
 
-    try:
+
+  try:
         data = pd.read_sql(
             "SELECT date, store, item, sales FROM sales",
             connection
         )
-    finally:
-        connection.close()
+  finally:
+    connection.close()
 
-    data["date"] = pd.to_datetime(data["date"])
+ else:
+    data = pd.read_csv(DATA_PATH)
 
-    return data
+ data["date"] = pd.to_datetime(data["date"])
+
+ return data
+
+
 
 
 @st.cache_resource
@@ -375,16 +387,22 @@ if st.button("Predict Next-Day Sales"):
 
 
 # 11. Model information
+
 st.divider()
 
 st.subheader("Model Information")
 
 st.write("**Algorithm:** Random Forest Regressor")
-st.write("**Evaluation MAE:** 6.26 units")
-st.write("**Evaluation RMSE:** 8.15 units")
+st.write("**Evaluation MAE:** 6.34 units")
+st.write("**Evaluation RMSE:** 8.26 units")
+st.write("**Evaluation WAPE:** 10.77%")
 st.write("**Evaluation period:** January–December 2017")
+st.write("**Baseline MAE:** 8.84 units")
+st.write("**MAE improvement over baseline:** 28.34%")
 
 st.caption(
-    "Model performance is based on a historical test period. "
-    "Actual future performance may differ."
+"Metrics are based on a historical rolling one-day-ahead "
+"evaluation. Actual sales from previous days were available "
+"when generating subsequent test predictions. "
+"Actual future performance may differ."
 )

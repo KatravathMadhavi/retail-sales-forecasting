@@ -55,14 +55,26 @@ Historical sales features are shifted so that the target day's actual sales are 
 
 ## Model Evaluation
 
-The improved Random Forest model was evaluated on a chronological test period covering January–December 2017.
+The compact Random Forest model was evaluated on a chronological test period covering January–December 2017 and compared with a previous-week sales baseline.
 
-| Metric                         |     Result |
-| ------------------------------ | ---------: |
-| Mean Absolute Error (MAE)      | 6.34 units |
-| Root Mean Squared Error (RMSE) | 8.26 units |
+| Model                  |  MAE |  RMSE |   WAPE |
+| ---------------------- | ---: | ----: | -----: |
+| Previous-week baseline | 8.84 | 11.60 | 15.03% |
+| Compact Random Forest  | 6.34 |  8.26 | 10.77% |
 
-The model's MAE indicates an average absolute prediction error of approximately 6.26 units per evaluated observation.
+**Evaluation summary:**
+
+* **MAE:** 6.34 sales units for the compact Random Forest, compared with 8.84 for the baseline.
+* **RMSE:** 8.26 for the compact Random Forest, compared with 11.60 for the baseline.
+* **WAPE:** 10.77% for the compact Random Forest, compared with 15.03% for the baseline.
+* **MAE improvement:** 28.34% compared with the previous-week baseline.
+* **RMSE improvement:** 28.76% compared with the previous-week baseline.
+
+Mean Absolute Error (MAE) measures the average absolute difference between predicted and actual sales. Root Mean Squared Error (RMSE) penalizes larger prediction errors more heavily. Weighted Absolute Percentage Error (WAPE) expresses the total absolute prediction error as a percentage of total actual sales.
+
+The data was split chronologically, using observations before January 2017 for training and observations from 2017 for testing. Historical lag and rolling-average features were constructed using earlier sales observations.
+
+The evaluation represents **rolling one-day-ahead predictions**: actual sales from previous days are available when constructing features for subsequent test dates. It does not represent a full-year forecast generated using only data available before January 2017.
 
 These results are based on a historical evaluation and do not guarantee future performance.
 
