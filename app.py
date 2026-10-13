@@ -335,55 +335,141 @@ st.download_button(
 
 
 
-# 10. Generate a one-day-ahead prediction
-st.subheader("Next-Day Sales Prediction")
+# 10. Generate multi-day sales forecasts
+
+st.subheader("📈 Multi-Day Sales Forecast")
 
 st.caption(
-    "The prediction uses the latest available historical sales "
-    "for the selected store and product. It estimates the next "
-    "day only; it is not a multi-day forecast."
+    "Forecast sales for the selected store and product over "
+    "the next 1–7 days. Predictions after the first day use "
+    "earlier predicted sales, so errors may accumulate."
 )
 
-if st.button("Predict Next-Day Sales"):
+forecast_days = st.selectbox(
+    "Select Forecast Horizon",
+    options=[1, 2, 3, 4, 5, 6, 7],
+    format_func=lambda days: (
+        f"{days} day" if days == 1 else f"{days} days"
+    ),
+)
 
-    history = filtered_df.sort_values("date").copy()
+if st.button("Generate Sales Forecast"):
+
+    history = (
+        filtered_df.sort_values("date")
+        .copy()
+        .reset_index(drop=True)
+    )
 
     if len(history) < 30:
         st.warning(
-            "At least 30 days of historical sales are required."
+            "At least 30 days of historical sales are required "
+            "to generate a forecast."
         )
 
     else:
-        last_row = history.iloc[-1]
+        sales_history = history["sales"].astype(float).tolist()
+        last_date = history["date"].max()
 
-        # The next prediction date follows the latest
-        # date in the selected store-product history.
-        next_date = last_row["date"] + pd.Timedelta(days=1)
+        forecast_results = []
 
-        last_sales = history["sales"].to_numpy()
+        for day in range(1, forecast_days + 1):
 
-        input_data = {
-            "store": [selected_store],
-            "item": [selected_item],
-            "year": [next_date.year],
-            "month": [next_date.month],
-            "day_of_week": [next_date.dayofweek],
-            "day_of_month": [next_date.day],
-            "day_of_year": [next_date.dayofyear],
-            "sales_lag_7": [last_sales[-7]],
-            "sales_lag_14": [last_sales[-14]],
-            "sales_rolling_mean_7": [last_sales[-7:].mean()],
-            "sales_rolling_mean_30": [last_sales[-30:].mean()],
-        }
+            forecast_date = (
+                last_date + pd.Timedelta(days=day)
+            )
 
-        input_df = pd.DataFrame(input_data)[features]
+            input_data = {
+                "store": [selected_store],
+                "item": [selected_item],
+                "year": [forecast_date.year],
+                "month": [forecast_date.month],
+                "day_of_week": [forecast_date.dayofweek],
+                "day_of_month": [forecast_date.day],
+                "day_of_year": [forecast_date.dayofyear],
+                "sales_lag_7": [sales_history[-7]],
+                "sales_lag_14": [sales_history[-14]],
+                "sales_rolling_mean_7": [
+                    sum(sales_history[-7:]) / 7
+                ],
+                "sales_rolling_mean_30": [
+                    sum(sales_history[-30:]) / 30
+                ],
+            }
 
-        prediction = model.predict(input_df)[0]
+            input_df = pd.DataFrame(input_data)[features]
+
+            prediction = float(model.predict(input_df)[0])
+            prediction = max(0.0, prediction)
+
+            forecast_results.append({
+                "Date": forecast_date,
+                "Predicted Sales": round(prediction, 2),
+            })
+
+            # Use the predicted sales for subsequent forecast days.
+            sales_history.append(prediction)
+
+        forecast_df = pd.DataFrame(forecast_results)
 
         st.success(
-            f"Predicted sales for {next_date.date()}: "
-            f"{max(0, prediction):.0f} units"
+            f"Generated a {forecast_days}-day forecast "
+            f"for Store {selected_store}, Product {selected_item}."
         )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.metric(
+                "Total Forecast Sales",
+                f"{forecast_df['Predicted Sales'].sum():,.0f} units",
+            )
+
+        with col2:
+            st.metric(
+                "Average Daily Forecast",
+                f"{forecast_df['Predicted Sales'].mean():,.2f} units",
+            )
+
+        st.subheader("Forecast Chart")
+
+        st.line_chart(
+            forecast_df,
+            x="Date",
+            y="Predicted Sales",
+            x_label="Forecast Date",
+            y_label="Predicted Units Sold",
+        )
+
+        st.subheader("Forecast Details")
+
+        display_forecast = forecast_df.copy()
+        display_forecast["Date"] = (
+            display_forecast["Date"].dt.strftime("%Y-%m-%d")
+        )
+
+        st.dataframe(
+            display_forecast,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        csv_forecast = (
+            forecast_df.to_csv(index=False).encode("utf-8")
+        )
+
+        st.download_button(
+            label="Download Forecast as CSV",
+            data=csv_forecast,
+            file_name=(
+                f"store_{selected_store}_item_{selected_item}_"
+                f"{forecast_days}_day_forecast.csv"
+            ),
+            mime="text/csv",
+        )
+
+
+
 
 
 # 11. Model information
